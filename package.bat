@@ -1,0 +1,1 @@
+pyinstaller --onefile --hidden-import=xlrd --hidden-import=openpyxl main.py
