@@ -34,6 +34,7 @@ station_mapping = {
     '242': 'S242 K0+450黑林收费站',
     '204': 'G204 K386+800柘汪收费站',
 }
+# 根据轴数获取限重
 limit_weight_mapping = {
     '3': '25',
     '4': '31',
@@ -68,10 +69,10 @@ def get_data(card: str):
                 detail_url = f'http://10.56.1.52:8000/api/tmis/toi-query/v1/nations/owners/{provinceCode}/{owner_id}?t={int(time.time())}'
             detail_resp = session.get(detail_url).json()
             owner_name = detail_resp.get('data').get('ownerName')
-            principalMobile = detail_resp.get('data').get('principalMobile')
+            principalMobile = detail_resp.get('data').get('principalMobile',None)
             address = detail_resp.get('data').get('address')
             principal = detail_resp.get('data').get('principal')
-            telephone = detail_resp.get('data').get('telephone')
+            telephone = detail_resp.get('data').get('telephone',None)
             user_infos.append({
                 '车牌': card,
                 '业户': owner_name,
@@ -94,11 +95,30 @@ def get_city_from_car_number(car_number: str):
     :param car_number:
     :return:
     """
-    # 获取第一行车牌
+    # 获取编码
     code = car_number[0:2]
     with open('card_mapping.json', 'r', encoding='utf-8') as f:
         return json.load(f).get(code)
+def generate_file_name(filepath: str)->str:
+    """
+    在文件名后添加序号
+    :param filepath:
+    :return:
+    """
+    # 如果文件不存在，直接返回原路径
+    if not os.path.exists(filepath):
+        return filepath
 
+    # 分离文件名和扩展名
+    base, ext = os.path.splitext(filepath)
+    counter = 1
+
+    # 循环直到找到不存在的文件名
+    while True:
+        new_filepath = f"{base}_{counter}{ext}"
+        if not os.path.exists(new_filepath):
+            return new_filepath
+        counter += 1
 
 if not os.path.exists('函告'):
     os.makedirs('函告')
@@ -152,6 +172,7 @@ for index, row in tqdm(df.iterrows(), total=df.shape[0], desc="正在生成"):
             'plate_number': data['plate_number'],
             'owner_name': system_data['owner_name'],
             'telephone': system_data['telephone'],
+            'principalMobile': system_data['principalMobile'],
             'weight': row['总重T'],
             'limit_weight': limit_weight_mapping.get(str(row['轴数'])),
             'over_weight': row['超限T'],
@@ -159,11 +180,11 @@ for index, row in tqdm(df.iterrows(), total=df.shape[0], desc="正在生成"):
             'city_and_province': city_and_province
         })
         hangao_template.render(data)
-        hangao_template.save(f'函告/{row["车牌"]}.docx')
+        hangao_template.save(generate_file_name(f'函告/{row["车牌"]}.docx'))
         mail_template.render(data)
-        mail_template.save(f'信封/{row["车牌"]}.docx')
+        mail_template.save(generate_file_name(f'信封/{row["车牌"]}.docx'))
         sms_template.render(data)
-        sms_template.save(f'短信/{row["车牌"]}.docx')
+        sms_template.save(generate_file_name(f'短信/{row["车牌"]}.docx'))
 chaogao_creator.create(chaogao_data)
 user_df = pandas.DataFrame(user_infos)
 user_df.to_excel('业户信息.xlsx')
