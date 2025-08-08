@@ -8,6 +8,9 @@ def create(cars, data: dict = None, template_file="模板/抄告模版.docx"):
     # 根据城市进行分类
     table_dict = {}
     for car in cars:
+        # 如果是赣/渝车牌则跳过
+        if car.get('plate_number','').startswith('赣') or car.get('plate_number','').startswith('渝'):
+            continue
         # 如果负责人手机存在
         if car.get('telephone') is None and car.get('principalMobile') is not None:
             car['telephone'] = car.get('principalMobile')

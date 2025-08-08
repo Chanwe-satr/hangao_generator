@@ -36,6 +36,7 @@ station_mapping = {
 }
 # 根据轴数获取限重
 limit_weight_mapping = {
+    '2': '18',
     '3': '25',
     '4': '31',
     '5': '42',
