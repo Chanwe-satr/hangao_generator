@@ -146,6 +146,7 @@ else:
 case_number = int(input("输入起始案号："))
 user_infos = []
 chaogao_data = []
+ganyu_data = []
 for index, row in tqdm(df.iterrows(), total=df.shape[0], desc="正在生成"):
     # v_data = {"key":"value"}
     system_data = get_data(row['车牌']) # 获取车辆信息
@@ -166,20 +167,36 @@ for index, row in tqdm(df.iterrows(), total=df.shape[0], desc="正在生成"):
         data.update(system_data)
         # 抄告数据
         city_and_province = get_city_from_car_number(row['车牌'])
-        # 获取城市
-        chaogao_data.append({
-            'station': data['station'],
-            'time': dt.strftime('%Y-%m-%d %H:%M:%S'),
-            'plate_number': data['plate_number'],
-            'owner_name': system_data['owner_name'],
-            'telephone': system_data['telephone'],
-            'principalMobile': system_data['principalMobile'],
-            'weight': row['总重T'],
-            'limit_weight': limit_weight_mapping.get(str(row['轴数'])),
-            'over_weight': row['超限T'],
-            'over_rate': row['超限率%'],
-            'city_and_province': city_and_province
-        })
+        # 如果是赣榆
+        if '赣榆' in system_data['address']:
+            ganyu_data.append({
+                '时间': dt.strftime('%Y-%m-%d %H:%M:%S'),
+                '车牌': row['车牌'],
+                '轴数': row['轴数'],
+                '总重T': row['总重T'],
+                '桩号': row['桩号'],
+                '业户': system_data['owner_name'],
+                '地址': system_data['address'],
+                '负责人': system_data['principal'],
+                '负责人手机号': system_data['principalMobile'],
+                '联系电话': system_data['telephone'],
+                })
+        else:
+            # 添加到抄告数据
+            chaogao_data.append({
+                'station': data['station'],
+                'time': dt.strftime('%Y-%m-%d %H:%M:%S'),
+                'plate_number': data['plate_number'],
+                'owner_name': system_data['owner_name'],
+                'telephone': system_data['telephone'],
+                'principalMobile': system_data['principalMobile'],
+                'weight': row['总重T'],
+                'limit_weight': limit_weight_mapping.get(str(row['轴数'])),
+                'over_weight': row['超限T'],
+                'over_rate': row['超限率%'],
+                'city_and_province': city_and_province,
+                'address': system_data['address']
+            })
         hangao_template.render(data)
         hangao_template.save(generate_file_name(f'函告/{row["车牌"]}.docx'))
         mail_template.render(data)
@@ -187,6 +204,10 @@ for index, row in tqdm(df.iterrows(), total=df.shape[0], desc="正在生成"):
         sms_template.render(data)
         sms_template.save(generate_file_name(f'短信/{row["车牌"]}.docx'))
 chaogao_creator.create(chaogao_data)
+# 保存业户信息
 user_df = pandas.DataFrame(user_infos)
 user_df.to_excel('业户信息.xlsx')
+# 保存赣榆数据
+ganyu_df = pandas.DataFrame(ganyu_data)
+ganyu_df.to_excel('抄告/赣榆抄告.xlsx')
 os.system('pause')
