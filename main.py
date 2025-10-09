@@ -33,6 +33,9 @@ station_mapping = {
     '267': 'S267 K0+450动态检测点',
     '242': 'S242 K0+450黑林收费站',
     '204': 'G204 K386+800柘汪收费站',
+    '2042': '连云港赣榆G204 K386+804动态检测点',
+    '2282': '连云港赣榆G228 K2909+400动态检测点',
+    '402': '连云港赣榆S402 K2+000动态检测点'
 }
 # 根据轴数获取限重
 limit_weight_mapping = {
@@ -70,10 +73,10 @@ def get_data(card: str):
                 detail_url = f'http://10.56.1.52:8000/api/tmis/toi-query/v1/nations/owners/{provinceCode}/{owner_id}?t={int(time.time())}'
             detail_resp = session.get(detail_url).json()
             owner_name = detail_resp.get('data').get('ownerName')
-            principalMobile = detail_resp.get('data').get('principalMobile',None)
+            principalMobile = detail_resp.get('data').get('principalMobile', None)
             address = detail_resp.get('data').get('address')
             principal = detail_resp.get('data').get('principal')
-            telephone = detail_resp.get('data').get('telephone',None)
+            telephone = detail_resp.get('data').get('telephone', None)
             user_infos.append({
                 '车牌': card,
                 '业户': owner_name,
@@ -100,7 +103,9 @@ def get_city_from_car_number(car_number: str):
     code = car_number[0:2]
     with open('card_mapping.json', 'r', encoding='utf-8') as f:
         return json.load(f).get(code)
-def generate_file_name(filepath: str)->str:
+
+
+def generate_file_name(filepath: str) -> str:
     """
     在文件名后添加序号
     :param filepath:
@@ -120,6 +125,7 @@ def generate_file_name(filepath: str)->str:
         if not os.path.exists(new_filepath):
             return new_filepath
         counter += 1
+
 
 if not os.path.exists('函告'):
     os.makedirs('函告')
@@ -149,7 +155,7 @@ chaogao_data = []
 ganyu_data = []
 for index, row in tqdm(df.iterrows(), total=df.shape[0], desc="正在生成"):
     # v_data = {"key":"value"}
-    system_data = get_data(row['车牌']) # 获取车辆信息
+    system_data = get_data(row['车牌'])  # 获取车辆信息
     if system_data:
         case_number = case_number + 1
         dt = datetime.strptime(row['时间'], '%Y-%m-%d %H:%M:%S.%f')
@@ -180,7 +186,7 @@ for index, row in tqdm(df.iterrows(), total=df.shape[0], desc="正在生成"):
                 '负责人': system_data['principal'],
                 '负责人手机号': system_data['principalMobile'],
                 '联系电话': system_data['telephone'],
-                })
+            })
         else:
             # 添加到抄告数据
             chaogao_data.append({
