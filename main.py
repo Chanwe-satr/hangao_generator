@@ -4,6 +4,7 @@ import sys
 import time
 import urllib
 from datetime import datetime
+from http.client import responses
 
 import requests
 import pandas
@@ -33,8 +34,8 @@ station_mapping = {
     '267': 'S267 K0+450动态检测点',
     '242': 'S242 K0+450黑林收费站',
     '204': 'G204 K386+800柘汪收费站',
-    '2042': '连云港赣榆G204 K386+804动态检测点',
-    '2282': '连云港赣榆G228 K2909+400动态检测点',
+    '204新': '连云港赣榆G204 K386+804动态检测点',
+    '228下行': '连云港赣榆G228 K2909+400动态检测点',
     '402': '连云港赣榆S402 K2+000动态检测点'
 }
 # 根据轴数获取限重
@@ -45,7 +46,26 @@ limit_weight_mapping = {
     '5': '42',
     '6': '49'
 }
-
+def get_car_info(car):
+    """
+    黄色车牌为2
+    绿色车牌为5
+    """
+    card_encode = urllib.parse.quote(car)
+    url_template = 'http://10.56.1.52:8000/api/tmis/toi-query/v1/{nations}vehicles/{card_encode}/{card_type}?t={time}'
+    nations = '' if car.startswith('苏') else 'nations/'
+    url = url_template.format(nations=nations, card_encode=card_encode, card_type=2, time=int(time.time()))
+    resp = session.get(url)
+    if resp.status_code == 200:
+        if not resp.json().get('success'):
+            print(f"黄色{car}未找到，正在查询绿色车牌")
+            # 获取绿色车牌
+            url = url_template.format(nations=nations, card_encode=card_encode,card_type=5, time=int(time.time()))
+            resp=session.get(url)
+    if resp.status_code != 200 :
+        print(f"绿色{car}未找到")
+        return None
+    return resp.json()
 
 def get_data(card: str):
     """
@@ -53,44 +73,31 @@ def get_data(card: str):
     :param card:
     :return:
     """
-    time.sleep(1)
-    card_encode = urllib.parse.quote(card)
-    if card.startswith('苏'):
-        url = f'http://10.56.1.52:8000/api/tmis/toi-query/v1/vehicles/{card_encode}/2?t={int(time.time())}'
-    else:
-        url = f'http://10.56.1.52:8000/api/tmis/toi-query/v1/nations/vehicles/{card_encode}/2?t={int(time.time())}'
-    resp = session.get(url)
-    if resp.status_code == 200:
-        response_data = resp.json()
-        if response_data.get('success') and response_data.get('data') is not None:
-
-            # 获取详细信息
-            owner_id = response_data.get('data').get('ownerId')
-            provinceCode = response_data.get('data').get('provinceCode')
-            if card.startswith('苏'):
-                detail_url = f'http://10.56.1.52:8000/api/tmis/toi-query/v1/owners/{owner_id}?t={int(time.time())}'
-            else:
-                detail_url = f'http://10.56.1.52:8000/api/tmis/toi-query/v1/nations/owners/{provinceCode}/{owner_id}?t={int(time.time())}'
-            detail_resp = session.get(detail_url).json()
-            owner_name = detail_resp.get('data').get('ownerName')
-            principalMobile = detail_resp.get('data').get('principalMobile', None)
-            address = detail_resp.get('data').get('address')
-            principal = detail_resp.get('data').get('principal')
-            telephone = detail_resp.get('data').get('telephone', None)
-            user_infos.append({
-                '车牌': card,
-                '业户': owner_name,
-                "地址": address,
-                "负责人": principal,
-                '负责人手机号': principalMobile,
-                "联系电话": telephone
-            })
-            return {'owner_name': owner_name,
-                    'principalMobile': principalMobile,
-                    "address": address,
-                    "principal": principal,
-                    "telephone": telephone
-                    }
+    # time.sleep(1)
+    response_data=get_car_info(card)
+    if response_data is None:
+        return None
+    if response_data.get('data') is not None:
+        # 获取详细信息
+        owner_id = response_data.get('data').get('ownerId')
+        provinceCode = response_data.get('data').get('provinceCode')
+        if card.startswith('苏'):
+            detail_url = f'http://10.56.1.52:8000/api/tmis/toi-query/v1/owners/{owner_id}?t={int(time.time())}'
+        else:
+            detail_url = f'http://10.56.1.52:8000/api/tmis/toi-query/v1/nations/owners/{provinceCode}/{owner_id}?t={int(time.time())}'
+        detail_resp = session.get(detail_url).json()
+        owner_name = detail_resp.get('data').get('ownerName')
+        principalMobile = detail_resp.get('data').get('principalMobile', None)
+        address = detail_resp.get('data').get('address')
+        principal = detail_resp.get('data').get('principal')
+        telephone = detail_resp.get('data').get('telephone', None)
+        return {'owner_name': owner_name,
+                'principalMobile': principalMobile,
+                "address": address,
+                "principal": principal,
+                "telephone": telephone
+                }
+    return None
 
 
 def get_city_from_car_number(car_number: str):
@@ -157,6 +164,23 @@ for index, row in tqdm(df.iterrows(), total=df.shape[0], desc="正在生成"):
     # v_data = {"key":"value"}
     system_data = get_data(row['车牌'])  # 获取车辆信息
     if system_data:
+        # 业户信息
+        user_info={
+            "时间":row['时间'],
+            "车牌":row['车牌'],
+            "业户名称":system_data.get('owner_name'),
+            "是否处罚":"",
+            "处理情况":"",
+            "桩号":row['桩号'],
+            "轴数":row['轴数'],
+            "吨位":row['总重T'],
+            "地址":system_data.get('address'),
+            "负责人":system_data.get('principal'),
+            "负责人手机号":system_data.get('principalMobile'),
+            "联系电话":system_data.get('telephone')
+        }
+        user_infos.append(user_info)
+        # 案号
         case_number = case_number + 1
         dt = datetime.strptime(row['时间'], '%Y-%m-%d %H:%M:%S.%f')
         data = {
@@ -176,16 +200,18 @@ for index, row in tqdm(df.iterrows(), total=df.shape[0], desc="正在生成"):
         # 如果是赣榆
         if '赣榆' in system_data['address']:
             ganyu_data.append({
-                '时间': dt.strftime('%Y-%m-%d %H:%M:%S'),
-                '车牌': row['车牌'],
-                '轴数': row['轴数'],
-                '总重T': row['总重T'],
-                '桩号': row['桩号'],
-                '业户': system_data['owner_name'],
-                '地址': system_data['address'],
-                '负责人': system_data['principal'],
-                '负责人手机号': system_data['principalMobile'],
-                '联系电话': system_data['telephone'],
+                "时间":row['时间'],
+                "车牌":row['车牌'],
+                "业户名称":system_data.get('owner_name'),
+                "是否处罚":"",
+                "处理情况":"",
+                "桩号":row['桩号'],
+                "轴数":row['轴数'],
+                "吨位":row['总重T'],
+                "地址":system_data.get('address'),
+                "负责人":system_data.get('principal'),
+                "负责人手机号":system_data.get('principalMobile'),
+                "联系电话":system_data.get('telephone')
             })
         else:
             # 添加到抄告数据
@@ -212,7 +238,8 @@ for index, row in tqdm(df.iterrows(), total=df.shape[0], desc="正在生成"):
 chaogao_creator.create(chaogao_data)
 # 保存业户信息
 user_df = pandas.DataFrame(user_infos)
-user_df.to_excel('业户信息.xlsx')
+user_df.index = user_df.index + 1
+user_df.to_excel('业户信息.xlsx',index_label='序号')
 # 保存赣榆数据
 ganyu_df = pandas.DataFrame(ganyu_data)
 ganyu_df.to_excel('抄告/赣榆抄告.xlsx')
