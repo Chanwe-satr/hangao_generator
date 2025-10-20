@@ -18,8 +18,8 @@ f = open('token.txt', 'r')
 header = {
     'authorization': f.readline().strip(),
     'cookie': f.readline().strip(),
-    'host': '10.56.1.52:8000',
-    'referer': 'http://10.56.1.52:8000/tmis-query-web/',
+    'host': '172.27.10.176:8000',
+    'referer': 'https://172.27.10.176:8000/tmis-query-web/',
     'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36'
 }
 session.headers.update(header)
@@ -52,7 +52,7 @@ def get_car_info(car):
     绿色车牌为5
     """
     card_encode = urllib.parse.quote(car)
-    url_template = 'http://10.56.1.52:8000/api/tmis/toi-query/v1/{nations}vehicles/{card_encode}/{card_type}?t={time}'
+    url_template = 'https://172.27.10.176:8000/api/tmis/toi-query/v1/{nations}vehicles/{card_encode}/{card_type}?t={time}'
     nations = '' if car.startswith('苏') else 'nations/'
     url = url_template.format(nations=nations, card_encode=card_encode, card_type=2, time=int(time.time()))
     resp = session.get(url)
@@ -82,9 +82,9 @@ def get_data(card: str):
         owner_id = response_data.get('data').get('ownerId')
         provinceCode = response_data.get('data').get('provinceCode')
         if card.startswith('苏'):
-            detail_url = f'http://10.56.1.52:8000/api/tmis/toi-query/v1/owners/{owner_id}?t={int(time.time())}'
+            detail_url = f'https://172.27.10.176:8000/api/tmis/toi-query/v1/owners/{owner_id}?t={int(time.time())}'
         else:
-            detail_url = f'http://10.56.1.52:8000/api/tmis/toi-query/v1/nations/owners/{provinceCode}/{owner_id}?t={int(time.time())}'
+            detail_url = f'https://172.27.10.176:8000/api/tmis/toi-query/v1/nations/owners/{provinceCode}/{owner_id}?t={int(time.time())}'
         detail_resp = session.get(detail_url).json()
         owner_name = detail_resp.get('data').get('ownerName')
         principalMobile = detail_resp.get('data').get('principalMobile', None)
