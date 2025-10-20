@@ -12,14 +12,15 @@ from docxtpl import DocxTemplate
 from tqdm import tqdm
 
 import chaogao_creator
-
+from urllib3.exceptions import InsecureRequestWarning
+requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 session = requests.Session()
 f = open('token.txt', 'r')
 header = {
     'authorization': f.readline().strip(),
     'cookie': f.readline().strip(),
     'host': '172.27.10.176:8000',
-    'referer': 'https://172.27.10.176:8000/tmis-query-web/',
+    'referer': 'http://172.27.10.176:8000/tmis-query-web/',
     'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36'
 }
 session.headers.update(header)
@@ -55,7 +56,7 @@ def get_car_info(car):
     url_template = 'https://172.27.10.176:8000/api/tmis/toi-query/v1/{nations}vehicles/{card_encode}/{card_type}?t={time}'
     nations = '' if car.startswith('苏') else 'nations/'
     url = url_template.format(nations=nations, card_encode=card_encode, card_type=2, time=int(time.time()))
-    resp = session.get(url)
+    resp = session.get(url,verify=False)
     if resp.status_code == 200:
         if not resp.json().get('success'):
             print(f"黄色{car}未找到，正在查询绿色车牌")
@@ -85,7 +86,7 @@ def get_data(card: str):
             detail_url = f'https://172.27.10.176:8000/api/tmis/toi-query/v1/owners/{owner_id}?t={int(time.time())}'
         else:
             detail_url = f'https://172.27.10.176:8000/api/tmis/toi-query/v1/nations/owners/{provinceCode}/{owner_id}?t={int(time.time())}'
-        detail_resp = session.get(detail_url).json()
+        detail_resp = session.get(detail_url, verify=False).json()
         owner_name = detail_resp.get('data').get('ownerName')
         principalMobile = detail_resp.get('data').get('principalMobile', None)
         address = detail_resp.get('data').get('address')
