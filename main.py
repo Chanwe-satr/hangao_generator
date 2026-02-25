@@ -51,22 +51,25 @@ def get_car_info(car):
     """
     黄色车牌为2
     绿色车牌为5
+    黄绿为6
     """
-    card_encode = urllib.parse.quote(car)
-    url_template = 'https://172.27.10.176:8000/api/tmis/toi-query/v1/{nations}vehicles/{card_encode}/{card_type}?t={time}'
-    nations = '' if car.startswith('苏') else 'nations/'
-    url = url_template.format(nations=nations, card_encode=card_encode, card_type=2, time=int(time.time()))
-    resp = session.get(url,verify=False)
-    if resp.status_code == 200:
-        if not resp.json().get('success'):
-            print(f"黄色{car}未找到，正在查询绿色车牌")
-            # 获取绿色车牌
-            url = url_template.format(nations=nations, card_encode=card_encode,card_type=5, time=int(time.time()))
-            resp=session.get(url)
-    if resp.status_code != 200 :
-        print(f"绿色{car}未找到")
-        return None
-    return resp.json()
+    card_type_map={
+        '2': '黄色',
+        '5': '绿色',
+        '6': '黄绿'
+    }
+    for key, value in card_type_map.items():
+        card_encode = urllib.parse.quote(car)
+        url_template = 'https://172.27.10.176:8000/api/tmis/toi-query/v1/{nations}vehicles/{card_encode}/{card_type}?t={time}'
+        nations = '' if car.startswith('苏') else 'nations/'
+        url = url_template.format(nations=nations, card_encode=card_encode, card_type=key, time=int(time.time()))
+        resp = session.get(url,verify=False)
+        if resp.status_code == 200:
+            if resp.json().get('data'):
+                print(f'{value}-{car} 获取车辆信息成功')
+                return resp.json()
+        else:
+            print(f'{value}-{car} 获取车辆信息失败')
 
 def get_data(card: str):
     """
