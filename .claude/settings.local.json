@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git checkout *)",
+      "Bash(uv sync *)",
+      "Bash(python -c \"import py_compile; py_compile.compile\\('backend.py', doraise=True\\); print\\('backend.py OK'\\)\")",
+      "Bash(python -c \"import py_compile; py_compile.compile\\('gui_worker.py', doraise=True\\); print\\('gui_worker.py OK'\\)\")",
+      "Bash(python -c \"import py_compile; py_compile.compile\\('gui_main_window.py', doraise=True\\); print\\('gui_main_window.py OK'\\)\")",
+      "Bash(python -c \"import py_compile; py_compile.compile\\('main.py', doraise=True\\); print\\('main.py OK'\\)\")",
+      "Bash(uv *)",
+      "Bash(curl *)",
+      "Bash(echo \"EXIT_CODE: $?\")",
+      "Bash(python *)",
+      "Bash(upx --version)"
+    ]
+  }
+}

@@ -31,7 +31,6 @@ def get_XSRF():
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
         'Referer': f'{base_url}/zcweb/Home',
         'Accept-Language': 'zh-CN,zh;q=0.9',
-        # 'Cookie': '.AspNetCore.Antiforgery.MVHJP96rvcg=CfDJ8IvXp2WpNo1Eo1Ti5_IX9fkJ_lnxfSCR0pFfrmjXwzAuXu2ensfWHsb1mfT3lMoK9iZKQ5O8fhpCmz1JVkeVRpxNDKycIp0kWfWBX3JTKKe1b1sjujrK7fuDm7ZXSe9NstVWZh6BNpoIRhnVDzdUhmo; .AspNetCore.Cookies=CfDJ8IvXp2WpNo1Eo1Ti5_IX9fmCU4_E0NrW9WvxwY5g3CW05690gz97tjMuyTBmGhZX6OBU2fSYx9NSh_WwjYHEhehMvNJAXGAJmteUhn0ECP9rvfxI0GOmainw0bwwHMDJa3KpVdxMTepqcJUW6gg0X-K_a1vYjxfyBO7oxgpPYhej4Wg3qOh7tjpAMoyxCngdresQF3d2zKhWHi7nheXxqtd1DM_HLMrHjLVoFAc2dl24VsopYVLCP9P1E_OoQdAJ0LBYlFuVfzZvbNnwUyEwrEZ5v6UOn1NHMvcz8VJC1UinYd110Vz17RFTsxDcneluT7RgROMu8iubiUkxDi4Yt18bURSeED4xa2HRO3DZM8jayWiyIxKdubIdiom9fxMefp0HTopNmFqaQwvMWgQTDSWp9tyH3BY2W0MF05P5UKqyh4yEvUsuHsFr6rN8R77Yl4qFW_vntq1NFBZbQ-u4qv4zj3F-xkKQw5r9zDC6Rl6cF8yf0Oq0AfXp8YaJTG4BYcLDZYBEQq7OG0zGW2cb2FA; .AspNetCore.Session=CfDJ8IvXp2WpNo1Eo1Ti5%2FIX9flJZCtkhUo2M7MtRFXNCSj5p04yCdoMOlgmcHcX%2BXhxWJukcr1OY10pWFUMTgDHMdoBtNGh7odx0wVdhO%2FoyTyn8tMxTiYJTVHqQ%2Fb4XtxBQxqSfO9of7579EF8kcYTPMFZX49n1Cpw30qUA8GBsE20',
     }
 
     params = {
@@ -46,9 +45,7 @@ def get_XSRF():
     )
     soup = BeautifulSoup(response.text, 'html.parser')
     script_tag = soup.find_all('script', attrs={'type': 'text/javascript'})[-1]
-    # 获取文本
     script_text = script_tag.text
-    # 解析XSRF
     match = re.search(r'XSRF[^>]+value="([^"]+)"', script_text)
     if match:
         xsrf_value = match.group(1)
@@ -142,19 +139,14 @@ def get_photo(res: str):
     :return:
     """
     soup = BeautifulSoup(res, 'html.parser')
-    # 解析时间
     titleTable2 = soup.find('table', id='titleTable2')
-    # 第一个label为时间
     time_label = titleTable2.find_all('label')[0]
     time_str = time_label.text.strip().replace(":", "：")
     if os.path.exists(time_str):
         os.rmdir(time_str)
     os.mkdir(time_str)
-    # 图片table
     img_table = soup.find('table', id='bodyTable')
-    # 图片td
     img_tds = img_table.find_all('td', class_='tdImg')
-    # 遍历图片td
     for img_td in img_tds:
         img_tag = img_td.find('img', class_='resImg')
         if img_tag is None:
@@ -250,15 +242,10 @@ if __name__ == '__main__':
     while not end:
         search_resp = search(current_page, station_id, plate_type, start_time, end_time, weightOS=weightOS)
         print(f"正在下载第{current_page}页，总计{search_resp.get('Data', {}).get('totalPage', 0)}页")
-        # 解析搜索结果
         car_list = parse_search_result(search_resp)
-        # 遍历车辆列表
         for car in car_list:
-            # 获取车辆详情
             detail_res = get_detail(car['SystemNO'], car['PassTime'], car['CheckType'])
-            # 获取照片
             get_photo(detail_res)
-        # 翻页
         end = (current_page >= int(search_resp.get('Data', {}).get('totalPage', 1)))
         current_page += 1
     print("下载完成")
